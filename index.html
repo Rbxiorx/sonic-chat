@@ -3,33 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SonicChat Pro - Ultra Précision</title>
+    <title>SonicChat Pro</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, sans-serif; background: #0b141a; color: #e9edef; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { background: #202c33; padding: 15px; text-align: center; font-weight: bold; color: #00a884; border-bottom: 1px solid #3b4a54; }
-        #chat-window { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; background-image: radial-gradient(#202c33 1px, transparent 1px); background-size: 20px 20px; }
-        .bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 16px; animation: fadeIn 0.3s ease; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #0b141a; 
+            color: #e9edef; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+
+        header { 
+            background: #202c33; 
+            padding: 15px; 
+            text-align: center; 
+            font-weight: bold; 
+            color: #00a884;
+            border-bottom: 1px solid #3b4a54;
+            z-index: 10;
+        }
+
+        #chat-window { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px;
+            background-color: #0b141a;
+            background-image: radial-gradient(#202c33 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .bubble { 
+            max-width: 80%; 
+            padding: 10px 15px; 
+            border-radius: 15px; 
+            font-size: 16px; 
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .sent { align-self: flex-end; background: #005c4b; color: white; border-bottom-right-radius: 2px; }
-        .received { align-self: flex-start; background: #202c33; color: white; border-bottom-left-radius: 2px; }
-        .input-area { background: #202c33; padding: 12px 15px; display: flex; align-items: center; gap: 10px; }
-        input { flex: 1; background: #2a3942; border: none; padding: 12px 18px; border-radius: 25px; color: white; outline: none; }
-        button { background: #00a884; border: none; width: 48px; height: 48px; border-radius: 50%; color: #0b141a; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .status-bar { font-size: 12px; background: #182229; padding: 6px; text-align: center; color: #8696a0; }
-        #visualizer { width: 100%; height: 3px; background: transparent; transition: background 0.1s; }
+
+        .sent { 
+            align-self: flex-end; 
+            background: #005c4b; 
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .received { 
+            align-self: flex-start; 
+            background: #202c33; 
+            color: white;
+            border-bottom-left-radius: 2px;
+        }
+
+        .input-area { 
+            background: #202c33; 
+            padding: 12px 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+        }
+
+        input { 
+            flex: 1; 
+            background: #2a3942; 
+            border: none; 
+            padding: 12px 18px; 
+            border-radius: 25px; 
+            color: white; 
+            outline: none;
+            font-size: 16px;
+        }
+
+        button { 
+            background: #00a884; 
+            border: none; 
+            width: 48px; 
+            height: 48px; 
+            border-radius: 50%; 
+            color: #0b141a; 
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .status-bar {
+            font-size: 12px;
+            background: #182229;
+            padding: 6px;
+            text-align: center;
+            color: #8696a0;
+        }
+
+        #visualizer {
+            width: 100%;
+            height: 2px;
+            background: transparent;
+        }
     </style>
 </head>
 <body>
 
-<header>SonicChat Pro - Haute Fiabilité</header>
-<div class="status-bar" id="micStatus">Appuyez pour activer l'écoute</div>
+<header>SonicChat Pro</header>
+<div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
 <div id="visualizer"></div>
-<div id="chat-window"></div>
+
+<div id="chat-window">
+    <div class="bubble received">Interface restaurée. Mode Ultra-Précision (bips lents et clairs) activé.</div>
+</div>
 
 <div class="input-area">
     <input type="text" id="inputText" placeholder="Message" autocomplete="off">
-    <button onclick="sendSound()">🚀</button>
+    <button onclick="sendSound()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path>
+        </svg>
+    </button>
 </div>
 
 <script>
@@ -41,11 +142,11 @@
     let isListening = false;
     let isSending = false; 
 
-    // --- RÉGLAGES OPTIMISÉS POUR HAUT-PARLEUR ---
+    // --- RÉGLAGES HAUTE FIABILITÉ ---
     const BASE_FREQ = 1400; 
-    const STEP_FREQ = 80;    // Écart très large pour éviter les confusions
-    const CHAR_DURATION = 0.35; // Bips plus longs pour être bien "entendus"
-    const GAP_DURATION = 0.25;  // Grand silence entre chaque bip (crucial pour l'écho)
+    const STEP_FREQ = 85;      // Écart massif pour éviter les erreurs
+    const CHAR_DURATION = 0.35; // Bip long pour une détection stable
+    const GAP_DURATION = 0.30;  // Silence entre bips pour tuer l'écho
 
     function sendSound() {
         const input = document.getElementById('inputText');
@@ -64,12 +165,11 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'sine'; // Sine est plus pur et traverse mieux l'air sans saturer
+            osc.type = 'sine'; // Son pur, idéal pour les hauts-parleurs
             osc.frequency.setValueAtTime(freq, time);
 
-            // Attaque et chute douce pour éviter les "clics" qui perturbent le micro
             gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.5, time + 0.05); 
+            gain.gain.linearRampToValueAtTime(0.4, time + 0.05); 
             gain.gain.linearRampToValueAtTime(0, time + CHAR_DURATION);
 
             osc.connect(gain);
@@ -80,10 +180,11 @@
             time += CHAR_DURATION + GAP_DURATION; 
         });
 
+        // Anti-écho : attend 1.2s après la fin réelle du son
         setTimeout(() => { 
             isSending = false; 
             micStatus.innerText = "🎤 Écoute active";
-        }, (time - audioCtx.currentTime) * 1000 + 1000);
+        }, (time - audioCtx.currentTime) * 1000 + 1200);
     }
 
     function addMessage(text, type) {
@@ -109,7 +210,7 @@
 
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 8192; // Précision maximale pour séparer les fréquences
+            analyser.fftSize = 8192; // Précision maximale
             source.connect(analyser);
 
             const bufferLength = analyser.frequencyBinCount;
@@ -117,7 +218,6 @@
             
             let currentWord = "";
             let lastCharTime = 0;
-            let lastCode = -1;
             let timeout;
 
             function process() {
@@ -131,16 +231,15 @@
                 let highVal = 0;
                 let highIdx = -1;
 
-                // On scanne les fréquences de nos bips
                 const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
                 for (let i = startBin; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal && dataArray[i] > 120) { // Seuil de détection plus sensible (120)
+                    if (dataArray[i] > highVal && dataArray[i] > 115) { // Sensibilité accrue
                         highVal = dataArray[i];
                         highIdx = i;
                     }
                 }
 
-                visualizer.style.background = highVal > 120 ? "#00a884" : "transparent";
+                visualizer.style.background = highVal > 115 ? "#00a884" : "transparent";
 
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
@@ -148,8 +247,8 @@
                     
                     if (code >= 32 && code <= 126) {
                         const now = Date.now();
-                        // On attend la fin du bip et le silence pour valider
-                        if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 800) {
+                        // Validation stricte du timing pour éviter les doublons
+                        if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
                             currentWord += String.fromCharCode(code);
                             lastCharTime = now;
                             clearTimeout(timeout);
@@ -165,7 +264,8 @@
                 requestAnimationFrame(process);
             }
             process();
-            micStatus.innerText = "🎤 Mode Ultra-Précision Actif";
+            micStatus.innerText = "🎤 Mode Brut Actif";
+            micStatus.style.color = "#00a884";
         } catch (err) {
             micStatus.innerText = "⚠️ Erreur micro";
             isListening = false;
