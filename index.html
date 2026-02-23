@@ -3,130 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SonicChat Pro</title>
+    <title>SonicChat Pro - Audible</title>
     <style>
         * { box-sizing: border-box; }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: #0b141a; 
-            color: #e9edef; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            overflow: hidden;
+            background: #0b141a; color: #e9edef; margin: 0; display: flex; 
+            flex-direction: column; height: 100vh; overflow: hidden;
         }
 
-        /* En-tête */
         header { 
-            background: #202c33; 
-            padding: 15px; 
-            text-align: center; 
-            font-weight: bold; 
-            color: #00a884;
-            border-bottom: 1px solid #3b4a54;
-            z-index: 10;
+            background: #202c33; padding: 15px; text-align: center; font-weight: bold; 
+            color: #00a884; border-bottom: 1px solid #3b4a54; z-index: 10;
         }
 
-        /* Fenêtre de chat */
         #chat-window { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px;
-            background-color: #0b141a;
-            /* Motif de fond discret */
+            flex: 1; overflow-y: auto; padding: 20px; display: flex; 
+            flex-direction: column; gap: 12px; background-color: #0b141a;
             background-image: radial-gradient(#202c33 1px, transparent 1px);
             background-size: 20px 20px;
         }
 
         .bubble { 
-            max-width: 80%; 
-            padding: 10px 15px; 
-            border-radius: 15px; 
-            font-size: 16px; 
-            line-height: 1.4;
-            word-wrap: break-word;
-            position: relative;
+            max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 16px; 
+            line-height: 1.4; word-wrap: break-word; position: relative;
             animation: fadeIn 0.3s ease;
         }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .sent { 
-            align-self: flex-end; 
-            background: #005c4b; 
-            color: white;
-            border-bottom-right-radius: 2px;
-        }
+        .sent { align-self: flex-end; background: #005c4b; color: white; border-bottom-right-radius: 2px; }
+        .received { align-self: flex-start; background: #202c33; color: white; border-bottom-left-radius: 2px; }
 
-        .received { 
-            align-self: flex-start; 
-            background: #202c33; 
-            color: white;
-            border-bottom-left-radius: 2px;
-        }
-
-        /* Barre d'entrée en bas */
         .input-area { 
-            background: #202c33; 
-            padding: 12px 15px; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px;
+            background: #202c33; padding: 12px 15px; display: flex; 
+            align-items: center; gap: 10px;
         }
 
         input { 
-            flex: 1; 
-            background: #2a3942; 
-            border: none; 
-            padding: 12px 18px; 
-            border-radius: 25px; 
-            color: white; 
-            outline: none;
-            font-size: 16px;
+            flex: 1; background: #2a3942; border: none; padding: 12px 18px; 
+            border-radius: 25px; color: white; outline: none; font-size: 16px;
         }
 
         button { 
-            background: #00a884; 
-            border: none; 
-            width: 48px; 
-            height: 48px; 
-            border-radius: 50%; 
-            color: #0b141a; 
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            background: #00a884; border: none; width: 48px; height: 48px; 
+            border-radius: 50%; color: #0b141a; cursor: pointer; display: flex; 
+            align-items: center; justify-content: center; flex-shrink: 0;
         }
 
-        button:active { transform: scale(0.9); }
-
-        .status-bar {
-            font-size: 12px;
-            background: #182229;
-            padding: 6px;
-            text-align: center;
-            color: #8696a0;
+        .status-bar { 
+            font-size: 12px; background: #182229; padding: 6px; 
+            text-align: center; color: #8696a0; 
         }
 
-        #visualizer {
-            width: 100%;
-            height: 2px;
-            background: transparent;
-        }
+        #visualizer { width: 100%; height: 2px; background: transparent; }
     </style>
 </head>
 <body>
 
-<header>SonicChat</header>
+<header>SonicChat Pro</header>
 <div class="status-bar" id="micStatus">Touchez l'écran pour activer l'écoute</div>
 
 <div id="chat-window">
-    <div class="bubble received">Bienvenue ! Posez vos téléphones côte à côte et parlez par sons.</div>
+    <div class="bubble received">Bienvenue ! Les bips sont réglés sur le mode audible.</div>
 </div>
 
 <div id="visualizer"></div>
@@ -144,7 +83,13 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const chatWindow = document.getElementById('chat-window');
     const micStatus = document.getElementById('micStatus');
+    
     let isListening = false;
+    let isSending = false; 
+
+    // Configuration des fréquences (Audibles)
+    const BASE_FREQ = 1200; 
+    const STEP_FREQ = 20;   
 
     // --- ENVOYEUR ---
     function sendSound() {
@@ -152,32 +97,37 @@
         const text = input.value.trim();
         if (!text) return;
 
+        isSending = true; // Bloque le récepteur pendant l'envoi
         addMessage(text, 'sent');
         input.value = '';
 
         let time = audioCtx.currentTime;
-        const charDuration = 0.18; // Durée par lettre
+        const charDuration = 0.15; 
 
         text.split('').forEach(char => {
-            const freq = 1300 + (char.charCodeAt(0) * 15);
+            const freq = BASE_FREQ + (char.charCodeAt(0) * STEP_FREQ);
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'sine';
+            osc.type = 'square'; // Son électronique bien audible
             osc.frequency.setValueAtTime(freq, time);
 
-            // Volume avec micro-fondu pour éviter les craquements
             gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.3, time + 0.02);
-            gain.gain.linearRampToValueAtTime(0, time + charDuration - 0.02);
+            gain.gain.linearRampToValueAtTime(0.2, time + 0.01);
+            gain.gain.linearRampToValueAtTime(0, time + charDuration - 0.01);
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             
             osc.start(time);
             osc.stop(time + charDuration);
-            time += charDuration + 0.04; // Petit intervalle
+            time += charDuration + 0.05; 
         });
+
+        // Réactive le micro après la fin des bips
+        setTimeout(() => { 
+            isSending = false; 
+        }, (time - audioCtx.currentTime) * 1000);
     }
 
     function addMessage(text, type) {
@@ -188,13 +138,12 @@
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    // --- RÉCEPTEUR (SANS FILTRES WEB) ---
+    // --- RÉCEPTEUR ---
     async function startListening() {
         if(isListening) return;
         isListening = true;
         
         try {
-            // DÉSACTIVATION DES FILTRES DE VOIX
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     echoCancellation: false,
@@ -203,7 +152,7 @@
                 } 
             });
 
-            micStatus.innerText = "🎤 Écoute active (Son brut)";
+            micStatus.innerText = "🎤 Écoute active (Bips audibles)";
             micStatus.style.color = "#00a884";
 
             const source = audioCtx.createMediaStreamSource(stream);
@@ -219,13 +168,18 @@
             let timeout;
 
             function process() {
+                // Anti-écho : on ne traite pas le son si on est en train d'envoyer
+                if (isSending) {
+                    requestAnimationFrame(process);
+                    return;
+                }
+
                 analyser.getByteFrequencyData(dataArray);
                 let highVal = 0;
                 let highIdx = -1;
 
-                // On cherche la fréquence dominante
                 for (let i = 0; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal && dataArray[i] > 170) { // Seuil de sensibilité
+                    if (dataArray[i] > highVal && dataArray[i] > 165) { 
                         highVal = dataArray[i];
                         highIdx = i;
                     }
@@ -233,22 +187,21 @@
 
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
-                    const code = Math.round((freq - 1300) / 15);
+                    const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
                     
                     if (code >= 32 && code <= 126) {
                         const now = Date.now();
-                        if (now - lastCharTime > 200) {
+                        if (now - lastCharTime > 180) {
                             currentWord += String.fromCharCode(code);
                             lastCharTime = now;
                             
-                            // Si plus de son pendant 1 seconde, on valide le message
                             clearTimeout(timeout);
                             timeout = setTimeout(() => {
                                 if (currentWord) {
                                     addMessage(currentWord, 'received');
                                     currentWord = "";
                                 }
-                            }, 1000);
+                            }, 800);
                         }
                     }
                 }
@@ -256,19 +209,16 @@
             }
             process();
         } catch (err) {
-            micStatus.innerText = "⚠️ Micro refusé ou bloqué";
-            micStatus.style.color = "#f15c5c";
+            micStatus.innerText = "⚠️ Micro bloqué (Vérifiez l'HTTPS)";
             isListening = false;
         }
     }
 
-    // Démarrage propre sur clic utilisateur
     document.body.addEventListener('click', () => {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         startListening();
     }, { once: false });
 
-    // Envoi via touche Entrée
     document.getElementById('inputText').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendSound();
     });
