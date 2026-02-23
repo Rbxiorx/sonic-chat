@@ -184,7 +184,7 @@
         setTimeout(() => { 
             isSending = false; 
             micStatus.innerText = "🎤 Écoute active";
-        }, (time - audioCtx.currentTime) * 1000 + 1200);
+        }, (time - audioCtx.currentTime) * 1000 + 2000);
     }
 
     function addMessage(text, type) {
@@ -233,13 +233,13 @@
 
                 const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
                 for (let i = startBin; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal && dataArray[i] > 115) { // Sensibilité accrue
+                    if (dataArray[i] > highVal && dataArray[i] > 75) { // Sensibilité accrue
                         highVal = dataArray[i];
                         highIdx = i;
                     }
                 }
 
-                visualizer.style.background = highVal > 115 ? "#00a884" : "transparent";
+                visualizer.style.background = highVal > 75 ? "#00a884" : "transparent";
 
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
@@ -257,7 +257,7 @@
                                     addMessage(currentWord, 'received');
                                     currentWord = "";
                                 }
-                            }, 1500);
+                            }, 3000);
                         }
                     }
                 }
