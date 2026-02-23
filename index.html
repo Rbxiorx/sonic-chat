@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SonicChat Pro - Audible</title>
+    <title>SonicChat Pro - Son Pur</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -11,64 +11,40 @@
             background: #0b141a; color: #e9edef; margin: 0; display: flex; 
             flex-direction: column; height: 100vh; overflow: hidden;
         }
-
         header { 
             background: #202c33; padding: 15px; text-align: center; font-weight: bold; 
             color: #00a884; border-bottom: 1px solid #3b4a54; z-index: 10;
         }
-
         #chat-window { 
             flex: 1; overflow-y: auto; padding: 20px; display: flex; 
             flex-direction: column; gap: 12px; background-color: #0b141a;
             background-image: radial-gradient(#202c33 1px, transparent 1px);
             background-size: 20px 20px;
         }
-
         .bubble { 
             max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 16px; 
             line-height: 1.4; word-wrap: break-word; position: relative;
             animation: fadeIn 0.3s ease;
         }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .sent { align-self: flex-end; background: #005c4b; color: white; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: #202c33; color: white; border-bottom-left-radius: 2px; }
-
-        .input-area { 
-            background: #202c33; padding: 12px 15px; display: flex; 
-            align-items: center; gap: 10px;
-        }
-
-        input { 
-            flex: 1; background: #2a3942; border: none; padding: 12px 18px; 
-            border-radius: 25px; color: white; outline: none; font-size: 16px;
-        }
-
-        button { 
-            background: #00a884; border: none; width: 48px; height: 48px; 
-            border-radius: 50%; color: #0b141a; cursor: pointer; display: flex; 
-            align-items: center; justify-content: center; flex-shrink: 0;
-        }
-
-        .status-bar { 
-            font-size: 12px; background: #182229; padding: 6px; 
-            text-align: center; color: #8696a0; 
-        }
-
-        #visualizer { width: 100%; height: 2px; background: transparent; }
+        .input-area { background: #202c33; padding: 12px 15px; display: flex; align-items: center; gap: 10px; }
+        input { flex: 1; background: #2a3942; border: none; padding: 12px 18px; border-radius: 25px; color: white; outline: none; font-size: 16px; }
+        button { background: #00a884; border: none; width: 48px; height: 48px; border-radius: 50%; color: #0b141a; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .status-bar { font-size: 12px; background: #182229; padding: 6px; text-align: center; color: #8696a0; }
+        #visualizer { width: 100%; height: 4px; background: #00a884; transform: scaleX(0); transition: transform 0.1s; }
     </style>
 </head>
 <body>
 
-<header>SonicChat Pro</header>
-<div class="status-bar" id="micStatus">Touchez l'écran pour activer l'écoute</div>
+<header>SonicChat - Mode Brut</header>
+<div class="status-bar" id="micStatus">Appuyez pour activer le micro sans filtres</div>
+<div id="visualizer"></div>
 
 <div id="chat-window">
-    <div class="bubble received">Bienvenue ! Les bips sont réglés sur le mode audible.</div>
+    <div class="bubble received">Micro configuré pour ignorer les bruits ambiants et ne pas s'écouter soi-même.</div>
 </div>
-
-<div id="visualizer"></div>
 
 <div class="input-area">
     <input type="text" id="inputText" placeholder="Message" autocomplete="off">
@@ -83,51 +59,56 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const chatWindow = document.getElementById('chat-window');
     const micStatus = document.getElementById('micStatus');
+    const visualizer = document.getElementById('visualizer');
     
     let isListening = false;
     let isSending = false; 
 
-    // Configuration des fréquences (Audibles)
-    const BASE_FREQ = 1200; 
-    const STEP_FREQ = 20;   
+    const BASE_FREQ = 1500; 
+    const STEP_FREQ = 65;   
+    const CHAR_DURATION = 0.20; 
 
-    // --- ENVOYEUR ---
     function sendSound() {
         const input = document.getElementById('inputText');
         const text = input.value.trim();
         if (!text) return;
 
-        isSending = true; // Bloque le récepteur pendant l'envoi
+        // --- DÉSACTIVATION DU MICRO LOCAL ---
+        isSending = true; 
         addMessage(text, 'sent');
         input.value = '';
 
         let time = audioCtx.currentTime;
-        const charDuration = 0.15; 
 
         text.split('').forEach(char => {
             const freq = BASE_FREQ + (char.charCodeAt(0) * STEP_FREQ);
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'square'; // Son électronique bien audible
+            osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, time);
 
             gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.2, time + 0.01);
-            gain.gain.linearRampToValueAtTime(0, time + charDuration - 0.01);
+            gain.gain.linearRampToValueAtTime(0.4, time + 0.01);
+            gain.gain.linearRampToValueAtTime(0, time + CHAR_DURATION - 0.01);
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             
             osc.start(time);
-            osc.stop(time + charDuration);
-            time += charDuration + 0.05; 
+            osc.stop(time + CHAR_DURATION);
+            time += CHAR_DURATION + 0.08; 
         });
 
-        // Réactive le micro après la fin des bips
+        // --- RÉACTIVATION APRÈS L'ENVOI ---
         setTimeout(() => { 
             isSending = false; 
-        }, (time - audioCtx.currentTime) * 1000);
+            micStatus.innerText = "🎤 Micro réactivé";
+            micStatus.style.color = "#00a884";
+        }, (time - audioCtx.currentTime) * 1000 + 100);
+        
+        micStatus.innerText = "🔇 Envoi en cours (Micro coupé)";
+        micStatus.style.color = "#f15c5c";
     }
 
     function addMessage(text, type) {
@@ -138,26 +119,27 @@
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    // --- RÉCEPTEUR ---
     async function startListening() {
         if(isListening) return;
         isListening = true;
         
         try {
+            // --- CONFIGURATION WEB POUR SON BRUT ---
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false
+                audio: { 
+                    echoCancellation: false, // Désactive l'anti-écho web
+                    noiseSuppression: false,  // Désactive la suppression de bruit
+                    autoGainControl: false,  // Désactive le réglage auto du volume
+                    highpassFilter: false    // Désactive le filtre des basses
                 } 
             });
 
-            micStatus.innerText = "🎤 Écoute active (Bips audibles)";
+            micStatus.innerText = "🎤 Écoute (Filtres désactivés)";
             micStatus.style.color = "#00a884";
 
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048;
+            analyser.fftSize = 4096;
             source.connect(analyser);
 
             const bufferLength = analyser.frequencyBinCount;
@@ -168,22 +150,27 @@
             let timeout;
 
             function process() {
-                // Anti-écho : on ne traite pas le son si on est en train d'envoyer
-                if (isSending) {
-                    requestAnimationFrame(process);
-                    return;
+                // Si on envoie, on n'analyse rien (évite l'auto-détection)
+                if (isSending) { 
+                    visualizer.style.transform = "scaleX(0)";
+                    requestAnimationFrame(process); 
+                    return; 
                 }
 
                 analyser.getByteFrequencyData(dataArray);
                 let highVal = 0;
                 let highIdx = -1;
 
-                for (let i = 0; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal && dataArray[i] > 165) { 
+                // On scanne uniquement les fréquences de nos bips (au dessus de BASE_FREQ)
+                const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
+                for (let i = startBin; i < bufferLength; i++) {
+                    if (dataArray[i] > highVal && dataArray[i] > 140) { 
                         highVal = dataArray[i];
                         highIdx = i;
                     }
                 }
+
+                visualizer.style.transform = `scaleX(${highVal / 255})`;
 
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
@@ -191,7 +178,7 @@
                     
                     if (code >= 32 && code <= 126) {
                         const now = Date.now();
-                        if (now - lastCharTime > 180) {
+                        if (now - lastCharTime > 220) {
                             currentWord += String.fromCharCode(code);
                             lastCharTime = now;
                             
@@ -201,7 +188,7 @@
                                     addMessage(currentWord, 'received');
                                     currentWord = "";
                                 }
-                            }, 800);
+                            }, 900);
                         }
                     }
                 }
@@ -209,7 +196,7 @@
             }
             process();
         } catch (err) {
-            micStatus.innerText = "⚠️ Micro bloqué (Vérifiez l'HTTPS)";
+            micStatus.innerText = "⚠️ Erreur micro";
             isListening = false;
         }
     }
@@ -223,6 +210,5 @@
         if (e.key === 'Enter') sendSound();
     });
 </script>
-
 </body>
 </html>
