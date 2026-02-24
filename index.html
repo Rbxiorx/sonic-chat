@@ -250,7 +250,7 @@
                     const now = Date.now();
 
                     // --- SÉCURITÉ : AUTO-FERMETURE SI SILENCE TROP LONG ---
-                    if (gateOpen && (now - lastCharTime > 3000)) { 
+                    if (gateOpen && (now - lastCharTime > 2000)) { 
                         gateOpen = false;
                         currentWord = ""; 
                         micStatus.innerText = "🎤 Écoute active";
@@ -258,7 +258,7 @@
 
                     // 1. Détection du signal de DEBUT (1500Hz)
                     if (!gateOpen && Math.abs(freq - SYNC_START) < 30) {
-                        if (now - lastCharTime > 1500) {
+                        if (now - lastCharTime > 1000) {
                             gateOpen = true;
                             lastCharTime = now;
                             micStatus.innerText = "🔓 Synchronise...";
