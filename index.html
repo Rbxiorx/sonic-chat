@@ -306,7 +306,7 @@
             if (Date.now() - startTime < 2000) requestAnimationFrame(check);
             else {
                 // Calcul du nouveau seuil
-                dynamicThreshold = Math.max(45, maxNoise + 15);
+                dynamicThreshold = Math.max(15, maxNoise + 10);
                 isCalibrating = false;
                 
                 // --- ICI : AFFICHAGE DU NOMBRE ---
@@ -337,5 +337,6 @@
 </script>
 </body>
 </html>
+
 
 
