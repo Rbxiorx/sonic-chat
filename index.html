@@ -19,34 +19,12 @@
 
         header { 
             background: #202c33; 
-            padding: 10px 15px; 
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 15px; 
+            text-align: center; 
             font-weight: bold; 
             color: #00a884;
             border-bottom: 1px solid #3b4a54;
             z-index: 10;
-        }
-
-        .channel-settings {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 12px;
-            background: #2a3942;
-            padding: 5px 10px;
-            border-radius: 20px;
-        }
-
-        .channel-settings input {
-            width: 45px;
-            background: transparent;
-            border: none;
-            color: #00a884;
-            font-weight: bold;
-            outline: none;
-            text-align: center;
         }
 
         #chat-window { 
@@ -56,7 +34,6 @@
             display: flex; 
             flex-direction: column; 
             gap: 12px;
-            background-color: #0b141a;
             background-image: radial-gradient(#202c33 1px, transparent 1px);
             background-size: 20px 20px;
         }
@@ -68,24 +45,33 @@
             font-size: 16px; 
             line-height: 1.4;
             word-wrap: break-word;
-            position: relative;
             animation: fadeIn 0.3s ease;
         }
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .sent { align-self: flex-end; background: #005c4b; border-bottom-right-radius: 2px; }
+        .received { align-self: flex-start; background: #202c33; border-bottom-left-radius: 2px; }
 
-        .sent { 
-            align-self: flex-end; 
-            background: #005c4b; 
-            color: white;
-            border-bottom-right-radius: 2px;
+        /* ZONE CANAL DÉPLACÉE ICI POUR ÉVITER LES COUPURES */
+        .channel-bar {
+            background: #182229;
+            padding: 5px 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            border-top: 1px solid #3b4a54;
+            font-size: 13px;
         }
-
-        .received { 
-            align-self: flex-start; 
-            background: #202c33; 
+        .channel-bar input {
+            background: #2a3942;
+            border: 1px solid #00a884;
             color: white;
-            border-bottom-left-radius: 2px;
+            border-radius: 5px;
+            width: 60px;
+            text-align: center;
+            padding: 2px;
+            outline: none;
         }
 
         .input-area { 
@@ -108,61 +94,32 @@
         }
 
         button { 
-            background: #00a884; 
-            border: none; 
-            width: 48px; 
-            height: 48px; 
-            border-radius: 50%; 
-            color: #0b141a; 
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            background: #00a884; border: none; width: 48px; height: 48px; border-radius: 50%; color: #0b141a; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
         }
 
-        #btnCalibrate {
-            background: #3b4a54;
-            width: 40px;
-            height: 40px;
-            color: white;
-        }
-
-        .status-bar {
-            font-size: 12px;
-            background: #182229;
-            padding: 6px;
-            text-align: center;
-            color: #8696a0;
-        }
-
-        #visualizer {
-            width: 100%;
-            height: 2px;
-            background: transparent;
-            transition: background 0.1s;
-        }
+        #btnCalibrate { background: #3b4a54; width: 40px; height: 40px; color: white; }
+        .status-bar { font-size: 12px; background: #182229; padding: 6px; text-align: center; color: #8696a0; }
+        #visualizer { width: 100%; height: 2px; background: transparent; transition: background 0.1s; }
     </style>
 </head>
 <body>
 
-<header>
-    <span>SonicChat Pro</span>
-    <div class="channel-settings">
-        <span>Canal:</span>
-        <input type="number" id="freqOffsetInput" value="0" onchange="updateOffset()">
-        <span>Hz</span>
-    </div>
-</header>
+<header>SonicChat Pro</header>
 <div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
 <div id="visualizer"></div>
 
 <div id="chat-window">
-    <div class="bubble received">Interface originale rétablie.<br>Utilisez le réglage "Canal" en haut pour décaler vos fréquences.</div>
+    <div class="bubble received">Réglage du canal déplacé en bas pour éviter les coupures sur ton écran.</div>
+</div>
+
+<div class="channel-bar">
+    <label style="color: #8696a0;">Canal :</label>
+    <input type="number" id="freqOffsetInput" value="0" onchange="updateOffset()">
+    <span style="color: #00a884; font-weight: bold;">Hz</span>
 </div>
 
 <div class="input-area">
-    <button id="btnCalibrate" onclick="calibrate()" title="Calibrer le bruit ambiant">
+    <button id="btnCalibrate" onclick="calibrate()">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 9.5a2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 1 0-5m0-2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9m0-6a1 1 0 0 1 1 1v2.07a8.001 8.001 0 0 1 7.93 7.93H23a1 1 0 1 1 0 2h-2.07a8.001 8.001 0 0 1-7.93 7.93V23a1 1 0 1 1-2 0v-2.07a8.001 8.001 0 0 1-7.93-7.93H1a1 1 0 1 1 0-2h2.07a8.001 8.001 0 0 1 7.93-7.93V2a1 1 0 0 1 1-1z"/></svg>
     </button>
     <input type="text" id="inputText" placeholder="Message" autocomplete="off">
@@ -179,7 +136,6 @@
     let isListening = false, isSending = false, isCalibrating = false;
     let dynamicThreshold = 50;
     
-    // --- VARIABLES CANAL ---
     let FREQ_OFFSET = 0;
     const STEP_FREQ = 60; 
     const CHAR_DURATION = 0.20; 
@@ -191,7 +147,7 @@
 
     function updateOffset() {
         FREQ_OFFSET = parseInt(document.getElementById('freqOffsetInput').value) || 0;
-        micStatus.innerText = "Canal mis à jour : +" + FREQ_OFFSET + " Hz";
+        micStatus.innerText = "Canal réglé sur +" + FREQ_OFFSET + " Hz";
     }
 
     function playTone(freq, startTime, duration) {
@@ -216,27 +172,23 @@
         isSending = true; 
         addMessage(text, 'sent');
         input.value = '';
-        micStatus.innerText = "🔇 Transmission...";
+        micStatus.innerText = "🔇 Envoi";
 
         let time = audioCtx.currentTime + 0.1;
-
-        // Signal de DEBUT avec offset
         playTone(1500 + FREQ_OFFSET, time, CHAR_DURATION);
         time += CHAR_DURATION + GAP_DURATION;
 
-        // LETTRES avec offset
         text.split('').forEach(char => {
             const freq = (1800 + FREQ_OFFSET) + (char.charCodeAt(0) * STEP_FREQ);
             playTone(freq, time, CHAR_DURATION);
             time += CHAR_DURATION + GAP_DURATION; 
         });
 
-        // Signal de FIN avec offset
         playTone(1400 + FREQ_OFFSET, time, CHAR_DURATION);
 
         setTimeout(() => { 
             isSending = false; 
-            micStatus.innerText = "🎤 Écoute)";
+            micStatus.innerText = "🎤 Écoute active";
         }, (time - audioCtx.currentTime) * 1000 + 1000);
     }
 
@@ -263,8 +215,6 @@
 
                 analyser.getByteFrequencyData(dataArray);
                 let highVal = 0, highIdx = -1;
-
-                // Scan adapté au canal choisi
                 const startBin = Math.floor((1300 + FREQ_OFFSET) / (audioCtx.sampleRate / analyser.fftSize));
                 for (let i = startBin; i < bufferLength; i++) {
                     if (dataArray[i] > highVal && dataArray[i] > dynamicThreshold) {
@@ -283,14 +233,12 @@
                         micStatus.innerText = "🎤 Écoute";
                     }
 
-                    // Détection DEBUT
                     if (!gateOpen && Math.abs(freq - (1500 + FREQ_OFFSET)) < 30) {
                         if (now - lastCharTime > 1000) {
                             gateOpen = true; lastCharTime = now;
                             micStatus.innerText = "🔓 Synchro";
                         }
                     } 
-                    // Détection FIN
                     else if (gateOpen && Math.abs(freq - (1400 + FREQ_OFFSET)) < 30) {
                         if (now - lastCharTime > 400) {
                             if (currentWord) addMessage(currentWord, 'received');
@@ -298,7 +246,6 @@
                             micStatus.innerText = "🎤 Écoute";
                         }
                     }
-                    // Détection LETTRES
                     else if (gateOpen && freq >= (1800 + FREQ_OFFSET - 20)) {
                         const code = Math.round((freq - (1800 + FREQ_OFFSET)) / STEP_FREQ);
                         if (code >= 32 && code <= 126) {
@@ -312,7 +259,7 @@
                 requestAnimationFrame(process);
             }
             process(); isListening = true;
-            micStatus.innerText = "🎤 Écoute";
+            micStatus.innerText = "🎤 Écoute active)";
         } catch (err) { micStatus.innerText = "⚠️ Erreur micro"; }
     }
 
@@ -331,7 +278,7 @@
             else {
                 dynamicThreshold = Math.max(45, maxNoise + 15);
                 isCalibrating = false;
-                micStatus.innerText = "✅ Calibré";
+                micStatus.innerText = "✅ Seuil : " + Math.round(dynamicThreshold);
                 setTimeout(() => micStatus.innerText = "🎤 Écoute", 2000);
             }
         };
