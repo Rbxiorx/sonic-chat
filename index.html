@@ -250,7 +250,7 @@
                     const now = Date.now();
 
                     // --- SÉCURITÉ : AUTO-FERMETURE SI SILENCE TROP LONG ---
-                    if (gateOpen && (now - lastCharTime > 1000)) { 
+                    if (gateOpen && (now - lastCharTime > 3000)) { 
                         gateOpen = false;
                         currentWord = ""; 
                         micStatus.innerText = "🎤 Écoute active (Reset : Silence)";
