@@ -249,35 +249,43 @@
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
                     const now = Date.now();
 
-                    // --- LOGIQUE DE SÉCURITÉ ---
+                    // --- SÉCURITÉ : AUTO-FERMETURE SI SILENCE TROP LONG ---
+                    if (gateOpen && (now - lastCharTime > 1000)) { 
+                        gateOpen = false;
+                        currentWord = ""; 
+                        micStatus.innerText = "🎤 Écoute active (Reset : Silence)";
+                    }
 
-                    // SI VERROUILLÉ : On cherche uniquement le signal de DEBUT (1500Hz)
+                    // 1. Détection du signal de DEBUT (1500Hz)
                     if (!gateOpen && Math.abs(freq - SYNC_START) < 30) {
                         if (now - lastCharTime > 1000) {
                             gateOpen = true;
                             lastCharTime = now;
-                            micStatus.innerText = "🔓 Synchronisé : Réception...";
+                            micStatus.innerText = "🔓 Synchronisé...";
                         }
                     } 
-                    // SI DÉVERROUILLÉ : On cherche soit la FIN (1400Hz) soit les LETTRES
-                    else if (gateOpen) {
-                        // Détection de la FIN
-                        if (Math.abs(freq - SYNC_END) < 30) {
-                            if (now - lastCharTime > 500) {
-                                if (currentWord) addMessage(currentWord, 'received');
-                                currentWord = ""; 
-                                gateOpen = false; // On referme le verrou
-                                lastCharTime = now;
-                                micStatus.innerText = "🎤 Écoute active (Verrouillée)";
-                            }
+                    // 2. Détection du signal de FIN (1400Hz)
+                    else if (gateOpen && Math.abs(freq - SYNC_END) < 30) {
+                        if (now - lastCharTime > 400) {
+                            if (currentWord) addMessage(currentWord, 'received');
+                            currentWord = ""; 
+                            gateOpen = false; 
+                            lastCharTime = now;
+                            micStatus.innerText = "🎤 Écoute active";
                         }
-                        // Détection des LETTRES
-                        else if (freq >= (BASE_FREQ - 20)) {
-                            const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
-                            if (code >= 32 && code <= 126) {
+                    }
+                    // 3. Détection des LETTRES
+                    else if (gateOpen && freq >= (BASE_FREQ - 20)) {
+                        const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
+                        if (code >= 32 && code <= 126) {
+                            const char = String.fromCharCode(code);
+                            const isTooFastRamp = (now - lastCharTime < 250);
+                            const isSameAsLast = (char === currentWord.slice(-1));
+
+                            if (!(isSameAsLast && isTooFastRamp)) {
                                 if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
-                                    currentWord += String.fromCharCode(code);
-                                    lastCharTime = now;
+                                    currentWord += char;
+                                    lastCharTime = now; // On réinitialise le chrono à chaque lettre
                                 }
                             }
                         }
@@ -306,7 +314,7 @@
             if (Date.now() - startTime < 2000) requestAnimationFrame(check);
             else {
                 // Calcul du nouveau seuil
-                dynamicThreshold = Math.max(15, maxNoise + 10);
+                dynamicThreshold = Math.max(45, maxNoise + 15);
                 isCalibrating = false;
                 
                 // --- ICI : AFFICHAGE DU NOMBRE ---
@@ -337,6 +345,3 @@
 </script>
 </body>
 </html>
-
-
-
