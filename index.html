@@ -142,11 +142,11 @@
     let isListening = false;
     let isSending = false; 
 
-    // --- RÉGLAGES HAUTE FIABILITÉ ---
-    const BASE_FREQ = 1800; 
-    const STEP_FREQ = 60;      // Écart massif pour éviter les erreurs
-    const CHAR_DURATION = 0.40; // Bip long pour une détection stable
-    const GAP_DURATION = 0;  // Silence entre bips pour tuer l'écho
+    // --- RÉGLAGES BINAIRES (FSK) ---
+    const FREQ_0 = 1800; 
+    const FREQ_1 = 2200; 
+    const BIT_DURATION = 0.10; // 100ms par bit (beaucoup plus rapide !)
+    const PAUSE = 0.02;        // Très courte pause pour séparer les ondes
 
     function sendSound() {
         const input = document.getElementById('inputText');
@@ -160,31 +160,37 @@
 
         let time = audioCtx.currentTime + 0.1;
 
-        text.split('').forEach(char => {
-            const freq = BASE_FREQ + (char.charCodeAt(0) * STEP_FREQ);
+        // Convertir le texte en suite de bits (0 et 1)
+        let binaryString = "";
+        for (let i = 0; i < text.length; i++) {
+            // On force sur 8 bits pour garder une synchro constante
+            binaryString += text.charCodeAt(i).toString(2).padStart(8, '0');
+        }
+
+        binaryString.split('').forEach(bit => {
+            const freq = (bit === "1") ? FREQ_1 : FREQ_0;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'sine'; // Son pur, idéal pour les hauts-parleurs
+            osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, time);
 
             gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.4, time + 0.05); 
-            gain.gain.linearRampToValueAtTime(0, time + CHAR_DURATION);
+            gain.gain.linearRampToValueAtTime(0.4, time + 0.01); 
+            gain.gain.linearRampToValueAtTime(0, time + BIT_DURATION);
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             
             osc.start(time);
-            osc.stop(time + CHAR_DURATION);
-            time += CHAR_DURATION + GAP_DURATION; 
+            osc.stop(time + BIT_DURATION);
+            time += BIT_DURATION + PAUSE; 
         });
 
-        // Anti-écho : attend 1.2s après la fin réelle du son
         setTimeout(() => { 
             isSending = false; 
             micStatus.innerText = "🎤 Écoute active";
-        }, (time - audioCtx.currentTime) * 1000 + 2000);
+        }, (time - audioCtx.currentTime) * 1000 + 500);
     }
 
     function addMessage(text, type) {
@@ -201,70 +207,70 @@
         
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: false, 
-                    noiseSuppression: false, 
-                    autoGainControl: false 
-                } 
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
             });
 
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 8192; // Précision maximale
+            analyser.fftSize = 2048; // Plus petit = plus rapide pour le binaire
             source.connect(analyser);
 
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             
-            let currentWord = "";
-            let lastCharTime = 0;
-            let timeout;
+            let bitBuffer = "";
+            let lastBitTime = 0;
 
             function process() {
                 if (isSending) { 
-                    visualizer.style.background = "transparent";
                     requestAnimationFrame(process); 
                     return; 
                 }
 
                 analyser.getByteFrequencyData(dataArray);
-                let highVal = 0;
-                let highIdx = -1;
+                
+                // On check quelle fréquence est la plus forte
+                const bin0 = Math.round(FREQ_0 / (audioCtx.sampleRate / analyser.fftSize));
+                const bin1 = Math.round(FREQ_1 / (audioCtx.sampleRate / analyser.fftSize));
+                
+                let detectedBit = null;
+                if (dataArray[bin0] > 100 && dataArray[bin0] > dataArray[bin1]) detectedBit = "0";
+                else if (dataArray[bin1] > 100 && dataArray[bin1] > dataArray[bin0]) detectedBit = "1";
 
-                const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
-                for (let i = startBin; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal && dataArray[i] > 50) { // Sensibilité accrue
-                        highVal = dataArray[i];
-                        highIdx = i;
-                    }
-                }
+                if (detectedBit !== null) {
+                    const now = Date.now();
+                    if (now - lastBitTime > BIT_DURATION * 800) {
+                        bitBuffer += detectedBit;
+                        lastBitTime = now;
 
-                visualizer.style.background = highVal > 50 ? "#00a884" : "transparent";
-
-                if (highIdx > -1) {
-                    const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
-                    const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
-                    
-                    if (code >= 32 && code <= 126) {
-                        const now = Date.now();
-                        // Validation stricte du timing pour éviter les doublons
-                        if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
-                            currentWord += String.fromCharCode(code);
-                            lastCharTime = now;
-                            clearTimeout(timeout);
-                            timeout = setTimeout(() => {
-                                if (currentWord) {
-                                    addMessage(currentWord, 'received');
-                                    currentWord = "";
-                                }
-                            }, 3000);
+                        // Si on a un octet complet (8 bits), on convertit en texte
+                        if (bitBuffer.length === 8) {
+                            const charCode = parseInt(bitBuffer, 2);
+                            if (charCode >= 32 && charCode <= 126) {
+                                // On ajoute au dernier message reçu ou on crée une bulle
+                                addReceivedChar(String.fromCharCode(charCode));
+                            }
+                            bitBuffer = "";
                         }
                     }
                 }
                 requestAnimationFrame(process);
             }
+
+            let currentReceivedText = "";
+            let messageTimeout;
+
+            function addReceivedChar(char) {
+                currentReceivedText += char;
+                clearTimeout(messageTimeout);
+                messageTimeout = setTimeout(() => {
+                    addMessage(currentReceivedText, 'received');
+                    currentReceivedText = "";
+                }, 1500);
+            }
+
             process();
-            micStatus.innerText = "🎤 Mode Brut Actif";
+            micStatus.innerText = "🎤 Mode Binaire Actif";
             micStatus.style.color = "#00a884";
         } catch (err) {
             micStatus.innerText = "⚠️ Erreur micro";
@@ -281,7 +287,3 @@
         if (e.key === 'Enter') sendSound();
     });
 </script>
-</body>
-</html>
-
-
