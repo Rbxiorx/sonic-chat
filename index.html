@@ -275,7 +275,7 @@
                         else if (freq >= (BASE_FREQ - 20)) {
                             const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
                             if (code >= 32 && code <= 126) {
-                                if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
+                                if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 350) {
                                     currentWord += String.fromCharCode(code);
                                     lastCharTime = now;
                                 }
