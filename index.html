@@ -146,7 +146,7 @@
     const BASE_FREQ = 1800; 
     const STEP_FREQ = 60;      // Écart massif pour éviter les erreurs
     const CHAR_DURATION = 0.40; // Bip long pour une détection stable
-    const GAP_DURATION = 0.40;  // Silence entre bips pour tuer l'écho
+    const GAP_DURATION = 0;  // Silence entre bips pour tuer l'écho
 
     function sendSound() {
         const input = document.getElementById('inputText');
@@ -283,4 +283,5 @@
 </script>
 </body>
 </html>
+
 
