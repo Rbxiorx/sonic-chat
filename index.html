@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SonicChat Pro</title>
+    <title>SonicChat Pro - Calibrated</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -85,11 +85,11 @@
             font-size: 16px;
         }
 
-        button { 
+        .btn-icon { 
             background: #00a884; 
             border: none; 
-            width: 48px; 
-            height: 48px; 
+            width: 42px; 
+            height: 42px; 
             border-radius: 50%; 
             color: #0b141a; 
             cursor: pointer;
@@ -97,6 +97,14 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+
+        .btn-icon:active { transform: scale(0.9); }
+
+        #btnCalibrate {
+            background: #3b4a54;
+            color: white;
         }
 
         .status-bar {
@@ -109,24 +117,30 @@
 
         #visualizer {
             width: 100%;
-            height: 2px;
+            height: 3px;
             background: transparent;
+            transition: background 0.1s;
         }
     </style>
 </head>
 <body>
 
 <header>SonicChat Pro</header>
-<div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
+<div class="status-bar" id="micStatus">Cliquez pour activer le micro</div>
 <div id="visualizer"></div>
 
 <div id="chat-window">
-    <div class="bubble received">Interface restaurée. Mode Ultra-Précision (bips lents et clairs) activé.</div>
+    <div class="bubble received">Système prêt. Calibrez le silence si l'environnement est bruyant.</div>
 </div>
 
 <div class="input-area">
+    <button class="btn-icon" id="btnCalibrate" onclick="calibrate()" title="Calibrer le silence">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 9.5a2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 1 0-5m0-2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9m0-6a1 1 0 0 1 1 1v2.07a8.001 8.001 0 0 1 7.93 7.93H23a1 1 0 1 1 0 2h-2.07a8.001 8.001 0 0 1-7.93 7.93V23a1 1 0 1 1-2 0v-2.07a8.001 8.001 0 0 1-7.93-7.93H1a1 1 0 1 1 0-2h2.07a8.001 8.001 0 0 1 7.93-7.93V2a1 1 0 0 1 1-1z"/>
+        </svg>
+    </button>
     <input type="text" id="inputText" placeholder="Message" autocomplete="off">
-    <button onclick="sendSound()">
+    <button class="btn-icon" onclick="sendSound()">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
             <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path>
         </svg>
@@ -141,22 +155,24 @@
     
     let isListening = false;
     let isSending = false; 
+    let isCalibrating = false;
+    let dynamicThreshold = 50; // Seuil par défaut
+    let analyser, dataArray, bufferLength;
 
-    // --- RÉGLAGES HAUTE FIABILITÉ ---
     const BASE_FREQ = 1800; 
-    const STEP_FREQ = 60;      // Écart massif pour éviter les erreurs
-    const CHAR_DURATION = 0.40; // Bip long pour une détection stable
-    const GAP_DURATION = 0.40;  // Silence entre bips pour tuer l'écho
+    const STEP_FREQ = 60; 
+    const CHAR_DURATION = 0.40; 
+    const GAP_DURATION = 0.40; 
 
     function sendSound() {
         const input = document.getElementById('inputText');
         const text = input.value.trim();
-        if (!text) return;
+        if (!text || isCalibrating) return;
 
         isSending = true; 
         addMessage(text, 'sent');
         input.value = '';
-        micStatus.innerText = "🔇 Transmission...";
+        micStatus.innerText = "🔇 Transmission en cours...";
 
         let time = audioCtx.currentTime + 0.1;
 
@@ -165,7 +181,7 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'sine'; // Son pur, idéal pour les hauts-parleurs
+            osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, time);
 
             gain.gain.setValueAtTime(0, time);
@@ -180,11 +196,48 @@
             time += CHAR_DURATION + GAP_DURATION; 
         });
 
-        // Anti-écho : attend 1.2s après la fin réelle du son
         setTimeout(() => { 
             isSending = false; 
             micStatus.innerText = "🎤 Écoute active";
-        }, (time - audioCtx.currentTime) * 1000 + 2000);
+        }, (time - audioCtx.currentTime) * 1000 + 1000);
+    }
+
+    async function calibrate() {
+        if (!isListening) {
+            await startListening();
+        }
+        if (isCalibrating || isSending) return;
+        
+        isCalibrating = true;
+        micStatus.innerText = "⏳ Calibration... Ne parlez pas";
+        micStatus.style.color = "#ffbc00";
+        
+        let maxNoise = 0;
+        const startTime = Date.now();
+
+        const checkNoise = () => {
+            analyser.getByteFrequencyData(dataArray);
+            const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
+            
+            for (let i = startBin; i < bufferLength; i++) {
+                if (dataArray[i] > maxNoise) maxNoise = dataArray[i];
+            }
+
+            if (Date.now() - startTime < 2000) {
+                requestAnimationFrame(checkNoise);
+            } else {
+                // Définit le seuil au dessus du bruit max avec une marge
+                dynamicThreshold = Math.max(40, maxNoise + 15); 
+                isCalibrating = false;
+                micStatus.innerText = `✅ Calibré (Seuil: ${Math.round(dynamicThreshold)})`;
+                micStatus.style.color = "#00a884";
+                setTimeout(() => { 
+                    micStatus.innerText = "🎤 Écoute active"; 
+                    micStatus.style.color = "#8696a0";
+                }, 2000);
+            }
+        };
+        checkNoise();
     }
 
     function addMessage(text, type) {
@@ -197,31 +250,26 @@
 
     async function startListening() {
         if(isListening) return;
-        isListening = true;
         
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: false, 
-                    noiseSuppression: false, 
-                    autoGainControl: false 
-                } 
+                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
             });
 
             const source = audioCtx.createMediaStreamSource(stream);
-            const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 8192; // Précision maximale
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 8192; 
             source.connect(analyser);
 
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
             
             let currentWord = "";
             let lastCharTime = 0;
             let timeout;
 
             function process() {
-                if (isSending) { 
+                if (isSending || isCalibrating) { 
                     visualizer.style.background = "transparent";
                     requestAnimationFrame(process); 
                     return; 
@@ -233,13 +281,13 @@
 
                 const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
                 for (let i = startBin; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal && dataArray[i] > 50) { // Sensibilité accrue
+                    if (dataArray[i] > highVal && dataArray[i] > dynamicThreshold) {
                         highVal = dataArray[i];
                         highIdx = i;
                     }
                 }
 
-                visualizer.style.background = highVal > 50 ? "#00a884" : "transparent";
+                visualizer.style.background = highVal > dynamicThreshold ? "#00a884" : "transparent";
 
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
@@ -247,7 +295,6 @@
                     
                     if (code >= 32 && code <= 126) {
                         const now = Date.now();
-                        // Validation stricte du timing pour éviter les doublons
                         if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
                             currentWord += String.fromCharCode(code);
                             lastCharTime = now;
@@ -264,17 +311,16 @@
                 requestAnimationFrame(process);
             }
             process();
-            micStatus.innerText = "🎤 Mode Brut Actif";
-            micStatus.style.color = "#00a884";
+            isListening = true;
+            micStatus.innerText = "🎤 Écoute active";
         } catch (err) {
             micStatus.innerText = "⚠️ Erreur micro";
-            isListening = false;
         }
     }
 
     document.body.addEventListener('click', () => {
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        startListening();
+        if (!isListening) startListening();
     }, { once: false });
 
     document.getElementById('inputText').addEventListener('keypress', (e) => {
@@ -283,4 +329,3 @@
 </script>
 </body>
 </html>
-
