@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chat Son</title>
+    <title>SonicChat Pro</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -117,11 +117,11 @@
 <body>
 
 <header>SonicChat Pro</header>
-<div class="status-bar" id="micStatus">Touchez pour activer le micro</div>
+<div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
 <div id="visualizer"></div>
 
 <div id="chat-window">
-    <div class="bubble received">Message par son</div>
+    <div class="bubble received">Interface restaurée. Mode Ultra-Précision (bips lents et clairs) activé.</div>
 </div>
 
 <div class="input-area">
@@ -142,14 +142,11 @@
     let isListening = false;
     let isSending = false; 
 
-    // Paramètres de base
+    // --- RÉGLAGES HAUTE FIABILITÉ ---
     const BASE_FREQ = 1800; 
-    const STEP_FREQ = 60; 
-    const CHAR_DURATION = 0.40; 
-    const GAP_DURATION = 0.40; 
-
-    // Variable de seuil dynamique
-    let dynamicThreshold = 45; 
+    const STEP_FREQ = 60;      // Écart massif pour éviter les erreurs
+    const CHAR_DURATION = 0.40; // Bip long pour une détection stable
+    const GAP_DURATION = 0.40;  // Silence entre bips pour tuer l'écho
 
     function sendSound() {
         const input = document.getElementById('inputText');
@@ -159,7 +156,7 @@
         isSending = true; 
         addMessage(text, 'sent');
         input.value = '';
-        micStatus.innerText = "🔇 Transmission en cours...";
+        micStatus.innerText = "🔇 Transmission...";
 
         let time = audioCtx.currentTime + 0.1;
 
@@ -168,7 +165,7 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            osc.type = 'sine';
+            osc.type = 'sine'; // Son pur, idéal pour les hauts-parleurs
             osc.frequency.setValueAtTime(freq, time);
 
             gain.gain.setValueAtTime(0, time);
@@ -183,9 +180,10 @@
             time += CHAR_DURATION + GAP_DURATION; 
         });
 
+        // Anti-écho : attend 1.2s après la fin réelle du son
         setTimeout(() => { 
             isSending = false; 
-            micStatus.innerText = "🎤 Écoute (Auto-Calibrée)";
+            micStatus.innerText = "🎤 Écoute active";
         }, (time - audioCtx.currentTime) * 1000 + 2000);
     }
 
@@ -203,12 +201,16 @@
         
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } 
+                audio: { 
+                    echoCancellation: false, 
+                    noiseSuppression: false, 
+                    autoGainControl: false 
+                } 
             });
 
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 8192; 
+            analyser.fftSize = 8192; // Précision maximale
             source.connect(analyser);
 
             const bufferLength = analyser.frequencyBinCount;
@@ -226,44 +228,26 @@
                 }
 
                 analyser.getByteFrequencyData(dataArray);
-
-                // --- CALIBRAGE ISOLÉ ---
-                // On mesure le volume uniquement entre 200Hz et 1000Hz (Bruit ambiant)
-                let noiseSum = 0;
-                let noiseCount = 0;
-                const noiseStart = Math.floor(200 / (audioCtx.sampleRate / analyser.fftSize));
-                const noiseEnd = Math.floor(1000 / (audioCtx.sampleRate / analyser.fftSize));
-                
-                for(let n = noiseStart; n < noiseEnd; n++) {
-                    noiseSum += dataArray[n];
-                    noiseCount++;
-                }
-                let avgNoise = noiseSum / noiseCount;
-                
-                // On ajuste le seuil : Bruit + 20 de marge. Jamais sous 30.
-                let target = Math.max(30, avgNoise + 20);
-                // Lissage (98% ancien, 2% nouveau) pour éviter les sauts brusques
-                dynamicThreshold = (dynamicThreshold * 0.98) + (target * 0.02);
-
                 let highVal = 0;
                 let highIdx = -1;
+
                 const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
-                
                 for (let i = startBin; i < bufferLength; i++) {
-                    if (dataArray[i] > highVal) {
+                    if (dataArray[i] > highVal && dataArray[i] > 50) { // Sensibilité accrue
                         highVal = dataArray[i];
                         highIdx = i;
                     }
                 }
 
-                // Utilisation du seuil auto-adaptatif
-                if (highVal > dynamicThreshold && highIdx > -1) {
-                    visualizer.style.background = "#00a884";
+                visualizer.style.background = highVal > 50 ? "#00a884" : "transparent";
+
+                if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
                     const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
                     
                     if (code >= 32 && code <= 126) {
                         const now = Date.now();
+                        // Validation stricte du timing pour éviter les doublons
                         if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
                             currentWord += String.fromCharCode(code);
                             lastCharTime = now;
@@ -276,13 +260,11 @@
                             }, 3000);
                         }
                     }
-                } else {
-                    visualizer.style.background = "transparent";
                 }
                 requestAnimationFrame(process);
             }
             process();
-            micStatus.innerText = "🎤 Écoute (Auto-Calibrée)";
+            micStatus.innerText = "🎤 Mode Brut Actif";
             micStatus.style.color = "#00a884";
         } catch (err) {
             micStatus.innerText = "⚠️ Erreur micro";
@@ -301,3 +283,4 @@
 </script>
 </body>
 </html>
+
