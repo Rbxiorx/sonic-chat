@@ -3,159 +3,284 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SonicChat - Synchro Totale</title>
+    <title>SonicChat Pro</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #0b141a; color: #e9edef; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        header { background: #202c33; padding: 12px 16px; border-bottom: 1px solid #2a3942; }
-        .user-info div:first-child { font-weight: bold; font-size: 18px; }
-        #statusText { font-size: 13px; color: #00a884; }
-        #chat-window { 
-            flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px;
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-            background-blend-mode: overlay;
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #0b141a; 
+            color: #e9edef; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden;
         }
-        .bubble { max-width: 80%; padding: 8px 12px; font-size: 16px; border-radius: 8px; }
-        .sent { align-self: flex-end; background: #005c4b; border-bottom-right-radius: 2px; }
-        .received { align-self: flex-start; background: #202c33; border-bottom-left-radius: 2px; }
-        .input-area { background: #202c33; padding: 10px; display: flex; align-items: center; gap: 10px; }
-        .input-bg { flex: 1; background: #2a3942; border-radius: 24px; padding: 5px 15px; }
-        input { width: 100%; background: transparent; border: none; padding: 10px; color: white; outline: none; }
-        .btn-send { background: #00a884; border: none; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        #v-bar { height: 2px; width: 0%; background: #00a884; }
+
+        header { 
+            background: #202c33; 
+            padding: 15px; 
+            text-align: center; 
+            font-weight: bold; 
+            color: #00a884;
+            border-bottom: 1px solid #3b4a54;
+            z-index: 10;
+        }
+
+        #chat-window { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px;
+            background-color: #0b141a;
+            background-image: radial-gradient(#202c33 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .bubble { 
+            max-width: 80%; 
+            padding: 10px 15px; 
+            border-radius: 15px; 
+            font-size: 16px; 
+            line-height: 1.4;
+            word-wrap: break-word;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .sent { 
+            align-self: flex-end; 
+            background: #005c4b; 
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .received { 
+            align-self: flex-start; 
+            background: #202c33; 
+            color: white;
+            border-bottom-left-radius: 2px;
+        }
+
+        .input-area { 
+            background: #202c33; 
+            padding: 12px 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+        }
+
+        input { 
+            flex: 1; 
+            background: #2a3942; 
+            border: none; 
+            padding: 12px 18px; 
+            border-radius: 25px; 
+            color: white; 
+            outline: none;
+            font-size: 16px;
+        }
+
+        button { 
+            background: #00a884; 
+            border: none; 
+            width: 48px; 
+            height: 48px; 
+            border-radius: 50%; 
+            color: #0b141a; 
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .status-bar {
+            font-size: 12px;
+            background: #182229;
+            padding: 6px;
+            text-align: center;
+            color: #8696a0;
+        }
+
+        #visualizer {
+            width: 100%;
+            height: 2px;
+            background: transparent;
+        }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="user-info">
-        <div>SonicChat Laser Pro</div>
-        <div id="statusText">Appuie pour activer</div>
-    </div>
-</header>
-<div id="v-bar"></div>
-<div id="chat-window"></div>
+<header>SonicChat Pro</header>
+<div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
+<div id="visualizer"></div>
+
+<div id="chat-window">
+    <div class="bubble received">Interface restaurée. Mode Ultra-Précision (bips lents et clairs) activé.</div>
+</div>
 
 <div class="input-area">
-    <div class="input-bg"><input type="text" id="inputText" placeholder="Message" autocomplete="off"></div>
-    <button class="btn-send" onclick="sendBinary()">🚀</button>
+    <input type="text" id="inputText" placeholder="Message" autocomplete="off">
+    <button onclick="sendSound()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path>
+        </svg>
+    </button>
 </div>
 
 <script>
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const chatWindow = document.getElementById('chat-window');
-    const statusText = document.getElementById('statusText');
-    const vBar = document.getElementById('v-bar');
+    const micStatus = document.getElementById('micStatus');
+    const visualizer = document.getElementById('visualizer');
     
-    // Fréquences Ultra-Audibles (15-17kHz)
-    const FREQ_START = 17000; 
-    const FREQ_0 = 15000;
-    const FREQ_1 = 16000;
-    const BIT_DURATION = 0.15; // On ralentit à 150ms pour que le Honor ait le temps d'analyser
+    let isListening = false;
+    let isSending = false; 
 
-    let isListening = false, isSending = false, isReceiving = false;
+    // --- RÉGLAGES HAUTE FIABILITÉ ---
+    const BASE_FREQ = 1800; 
+    const STEP_FREQ = 60;      // Écart massif pour éviter les erreurs
+    const CHAR_DURATION = 0.40; // Bip long pour une détection stable
+    const GAP_DURATION = 0.40;  // Silence entre bips pour tuer l'écho
 
-    function playTone(freq, start, duration, vol) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(freq, start);
-        gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(vol, start + 0.01);
-        gain.gain.linearRampToValueAtTime(0, start + duration - 0.01);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(start); osc.stop(start + duration);
-    }
-
-    function sendBinary() {
+    function sendSound() {
         const input = document.getElementById('inputText');
         const text = input.value.trim();
         if (!text) return;
+
         isSending = true; 
         addMessage(text, 'sent');
-        statusText.innerText = "Envoi...";
-        
-        let time = audioCtx.currentTime + 0.1;
-        
-        text.split('').forEach(char => {
-            // AVANT CHAQUE LETTRE : Un sifflement de synchro (0.2s)
-            playTone(FREQ_START, time, 0.2, 0.7); 
-            time += 0.25;
+        input.value = '';
+        micStatus.innerText = "🔇 Transmission...";
 
-            let binary = char.charCodeAt(0).toString(2).padStart(8, '0');
-            binary.split('').forEach(bit => {
-                playTone(bit === '0' ? FREQ_0 : FREQ_1, time, BIT_DURATION, 0.6);
-                time += BIT_DURATION;
-            });
-            time += 0.1; // Petit repos entre les lettres
+        let time = audioCtx.currentTime + 0.1;
+
+        text.split('').forEach(char => {
+            const freq = BASE_FREQ + (char.charCodeAt(0) * STEP_FREQ);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine'; // Son pur, idéal pour les hauts-parleurs
+            osc.frequency.setValueAtTime(freq, time);
+
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.4, time + 0.05); 
+            gain.gain.linearRampToValueAtTime(0, time + CHAR_DURATION);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(time);
+            osc.stop(time + CHAR_DURATION);
+            time += CHAR_DURATION + GAP_DURATION; 
         });
 
-        setTimeout(() => { isSending = false; statusText.innerText = "En ligne"; }, (time - audioCtx.currentTime) * 1000 + 500);
-        input.value = '';
+        // Anti-écho : attend 1.2s après la fin réelle du son
+        setTimeout(() => { 
+            isSending = false; 
+            micStatus.innerText = "🎤 Écoute active";
+        }, (time - audioCtx.currentTime) * 1000 + 2000);
     }
 
-    function addMessage(t, type) {
-        const d = document.createElement('div');
-        d.className = `bubble ${type}`;
-        d.innerText = t;
-        chatWindow.appendChild(d);
+    function addMessage(text, type) {
+        const div = document.createElement('div');
+        div.className = `bubble ${type}`;
+        div.innerText = text;
+        chatWindow.appendChild(div);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
     async function startListening() {
         if(isListening) return;
         isListening = true;
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
+                audio: { 
+                    echoCancellation: false, 
+                    noiseSuppression: false, 
+                    autoGainControl: false 
+                } 
             });
+
             const source = audioCtx.createMediaStreamSource(stream);
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048;
+            analyser.fftSize = 8192; // Précision maximale
             source.connect(analyser);
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
             
-            let bitBuffer = "", lastBitTime = 0, currentWord = "";
-            const getVal = (f) => dataArray[Math.round(f / (audioCtx.sampleRate / analyser.fftSize))];
+            let currentWord = "";
+            let lastCharTime = 0;
+            let timeout;
 
             function process() {
-                if (isSending) { requestAnimationFrame(process); return; }
-                analyser.getByteFrequencyData(dataArray);
-                let vStart = getVal(FREQ_START), v0 = getVal(FREQ_0), v1 = getVal(FREQ_1);
-                vBar.style.width = (Math.max(vStart, v0, v1)/255*100) + "%";
-                const now = Date.now();
-
-                // DÉTECTION DU START BIT (RE-SYNCHRO À CHAQUE LETTRE)
-                if (vStart > 60 && (now - lastBitTime > 500)) {
-                    isReceiving = true;
-                    bitBuffer = "";
-                    lastBitTime = now + 350; // On saute le start bit pour tomber sur le 1er data bit
-                    statusText.innerText = "Réception...";
+                if (isSending) { 
+                    visualizer.style.background = "transparent";
+                    requestAnimationFrame(process); 
+                    return; 
                 }
 
-                if (isReceiving && now > lastBitTime) {
-                    bitBuffer += (v1 > v0) ? "1" : "0";
-                    lastBitTime = now + (BIT_DURATION * 1000);
-                    
-                    if (bitBuffer.length === 8) {
-                        let code = parseInt(bitBuffer, 2);
-                        if (code >= 32 && code <= 126) currentWord += String.fromCharCode(code);
-                        bitBuffer = "";
-                        isReceiving = false; // On attend le prochain START pour la lettre suivante
+                analyser.getByteFrequencyData(dataArray);
+                let highVal = 0;
+                let highIdx = -1;
+
+                const startBin = Math.floor(BASE_FREQ / (audioCtx.sampleRate / analyser.fftSize));
+                for (let i = startBin; i < bufferLength; i++) {
+                    if (dataArray[i] > highVal && dataArray[i] > 50) { // Sensibilité accrue
+                        highVal = dataArray[i];
+                        highIdx = i;
                     }
                 }
 
-                if (!isReceiving && currentWord && now - lastBitTime > 1500) {
-                    addMessage(currentWord, 'received');
-                    currentWord = "";
-                    statusText.innerText = "En ligne";
+                visualizer.style.background = highVal > 50 ? "#00a884" : "transparent";
+
+                if (highIdx > -1) {
+                    const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
+                    const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
+                    
+                    if (code >= 32 && code <= 126) {
+                        const now = Date.now();
+                        // Validation stricte du timing pour éviter les doublons
+                        if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
+                            currentWord += String.fromCharCode(code);
+                            lastCharTime = now;
+                            clearTimeout(timeout);
+                            timeout = setTimeout(() => {
+                                if (currentWord) {
+                                    addMessage(currentWord, 'received');
+                                    currentWord = "";
+                                }
+                            }, 3000);
+                        }
+                    }
                 }
                 requestAnimationFrame(process);
             }
             process();
-        } catch (e) { statusText.innerText = "Erreur micro"; }
+            micStatus.innerText = "🎤 Mode Brut Actif";
+            micStatus.style.color = "#00a884";
+        } catch (err) {
+            micStatus.innerText = "⚠️ Erreur micro";
+            isListening = false;
+        }
     }
 
-    document.body.onclick = () => { audioCtx.resume(); startListening(); };
+    document.body.addEventListener('click', () => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        startListening();
+    }, { once: false });
+
+    document.getElementById('inputText').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendSound();
+    });
 </script>
 </body>
 </html>
+
