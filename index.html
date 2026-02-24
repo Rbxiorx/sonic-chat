@@ -19,12 +19,34 @@
 
         header { 
             background: #202c33; 
-            padding: 15px; 
-            text-align: center; 
+            padding: 10px 15px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             font-weight: bold; 
             color: #00a884;
             border-bottom: 1px solid #3b4a54;
             z-index: 10;
+        }
+
+        .channel-settings {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            background: #2a3942;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .channel-settings input {
+            width: 45px;
+            background: transparent;
+            border: none;
+            color: #00a884;
+            font-weight: bold;
+            outline: none;
+            text-align: center;
         }
 
         #chat-window { 
@@ -74,7 +96,7 @@
             gap: 10px;
         }
 
-        input { 
+        input[type="text"] { 
             flex: 1; 
             background: #2a3942; 
             border: none; 
@@ -124,12 +146,19 @@
 </head>
 <body>
 
-<header>SonicChat Pro</header>
+<header>
+    <span>SonicChat Pro</span>
+    <div class="channel-settings">
+        <span>Canal:</span>
+        <input type="number" id="freqOffsetInput" value="0" onchange="updateOffset()">
+        <span>Hz</span>
+    </div>
+</header>
 <div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
 <div id="visualizer"></div>
 
 <div id="chat-window">
-    <div class="bubble received">Sécurité active :<br>En attente du signal de départ (1500Hz).</div>
+    <div class="bubble received">Interface originale rétablie.<br>Utilisez le réglage "Canal" en haut pour décaler vos fréquences.</div>
 </div>
 
 <div class="input-area">
@@ -149,11 +178,9 @@
     let analyser, dataArray, bufferLength;
     let isListening = false, isSending = false, isCalibrating = false;
     let dynamicThreshold = 50;
-
-    // --- CONFIG SÉCURISÉE ---
-    const SYNC_START = 1500; // Fréquence de début obligatoire
-    const SYNC_END = 1400;   // Fréquence de fin pour valider
-    const BASE_FREQ = 1800; 
+    
+    // --- VARIABLES CANAL ---
+    let FREQ_OFFSET = 0;
     const STEP_FREQ = 60; 
     const CHAR_DURATION = 0.20; 
     const GAP_DURATION = 0.25; 
@@ -161,6 +188,11 @@
     const chatWindow = document.getElementById('chat-window');
     const micStatus = document.getElementById('micStatus');
     const visualizer = document.getElementById('visualizer');
+
+    function updateOffset() {
+        FREQ_OFFSET = parseInt(document.getElementById('freqOffsetInput').value) || 0;
+        micStatus.innerText = "Canal mis à jour : +" + FREQ_OFFSET + " Hz";
+    }
 
     function playTone(freq, startTime, duration) {
         const osc = audioCtx.createOscillator();
@@ -188,23 +220,23 @@
 
         let time = audioCtx.currentTime + 0.1;
 
-        // 1. Envoyer le signal de DEBUT
-        playTone(SYNC_START, time, CHAR_DURATION);
+        // Signal de DEBUT avec offset
+        playTone(1500 + FREQ_OFFSET, time, CHAR_DURATION);
         time += CHAR_DURATION + GAP_DURATION;
 
-        // 2. Envoyer les LETTRES
+        // LETTRES avec offset
         text.split('').forEach(char => {
-            const freq = BASE_FREQ + (char.charCodeAt(0) * STEP_FREQ);
+            const freq = (1800 + FREQ_OFFSET) + (char.charCodeAt(0) * STEP_FREQ);
             playTone(freq, time, CHAR_DURATION);
             time += CHAR_DURATION + GAP_DURATION; 
         });
 
-        // 3. Envoyer le signal de FIN
-        playTone(SYNC_END, time, CHAR_DURATION);
+        // Signal de FIN avec offset
+        playTone(1400 + FREQ_OFFSET, time, CHAR_DURATION);
 
         setTimeout(() => { 
             isSending = false; 
-            micStatus.innerText = "🎤 Écoute active";
+            micStatus.innerText = "🎤 Écoute)";
         }, (time - audioCtx.currentTime) * 1000 + 1000);
     }
 
@@ -221,9 +253,7 @@
             bufferLength = analyser.frequencyBinCount;
             dataArray = new Uint8Array(bufferLength);
             
-            let currentWord = "";
-            let lastCharTime = 0;
-            let gateOpen = false; // Le système est verrouillé par défaut
+            let currentWord = "", lastCharTime = 0, gateOpen = false;
 
             function process() {
                 if (isSending || isCalibrating) { 
@@ -234,68 +264,55 @@
                 analyser.getByteFrequencyData(dataArray);
                 let highVal = 0, highIdx = -1;
 
-                // Scan à partir de 1300Hz pour ignorer les bruits graves
-                const startBin = Math.floor(1300 / (audioCtx.sampleRate / analyser.fftSize));
+                // Scan adapté au canal choisi
+                const startBin = Math.floor((1300 + FREQ_OFFSET) / (audioCtx.sampleRate / analyser.fftSize));
                 for (let i = startBin; i < bufferLength; i++) {
                     if (dataArray[i] > highVal && dataArray[i] > dynamicThreshold) {
                         highVal = dataArray[i]; highIdx = i;
                     }
                 }
 
-                // Feedback visuel (Jaune si bruit, Vert si synchronisé)
                 visualizer.style.background = highVal > dynamicThreshold ? (gateOpen ? "#00a884" : "#ffbc00") : "transparent";
 
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
                     const now = Date.now();
 
-                    // --- SÉCURITÉ : AUTO-FERMETURE SI SILENCE TROP LONG ---
                     if (gateOpen && (now - lastCharTime > 2000)) { 
-                        gateOpen = false;
-                        currentWord = ""; 
-                        micStatus.innerText = "🎤 Écoute active";
+                        gateOpen = false; currentWord = ""; 
+                        micStatus.innerText = "🎤 Écoute";
                     }
 
-                    // 1. Détection du signal de DEBUT (1500Hz)
-                    if (!gateOpen && Math.abs(freq - SYNC_START) < 30) {
+                    // Détection DEBUT
+                    if (!gateOpen && Math.abs(freq - (1500 + FREQ_OFFSET)) < 30) {
                         if (now - lastCharTime > 1000) {
-                            gateOpen = true;
-                            lastCharTime = now;
-                            micStatus.innerText = "🔓 Synchronise...";
+                            gateOpen = true; lastCharTime = now;
+                            micStatus.innerText = "🔓 Synchro";
                         }
                     } 
-                    // 2. Détection du signal de FIN (1400Hz)
-                    else if (gateOpen && Math.abs(freq - SYNC_END) < 30) {
+                    // Détection FIN
+                    else if (gateOpen && Math.abs(freq - (1400 + FREQ_OFFSET)) < 30) {
                         if (now - lastCharTime > 400) {
                             if (currentWord) addMessage(currentWord, 'received');
-                            currentWord = ""; 
-                            gateOpen = false; 
-                            lastCharTime = now;
-                            micStatus.innerText = "🎤 Écoute active";
+                            currentWord = ""; gateOpen = false; lastCharTime = now;
+                            micStatus.innerText = "🎤 Écoute";
                         }
                     }
-                    // 3. Détection des LETTRES
-                    else if (gateOpen && freq >= (BASE_FREQ - 20)) {
-                        const code = Math.round((freq - BASE_FREQ) / STEP_FREQ);
+                    // Détection LETTRES
+                    else if (gateOpen && freq >= (1800 + FREQ_OFFSET - 20)) {
+                        const code = Math.round((freq - (1800 + FREQ_OFFSET)) / STEP_FREQ);
                         if (code >= 32 && code <= 126) {
-                            const char = String.fromCharCode(code);
-                            const isTooFastRamp = (now - lastCharTime < 250);
-                            const isSameAsLast = (char === currentWord.slice(-1));
-
-                            if (!(isSameAsLast && isTooFastRamp)) {
-                                if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
-                                    currentWord += char;
-                                    lastCharTime = now; // On réinitialise le chrono à chaque lettre
-                                }
+                            if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
+                                currentWord += String.fromCharCode(code);
+                                lastCharTime = now;
                             }
                         }
                     }
                 }
                 requestAnimationFrame(process);
             }
-            process();
-            isListening = true;
-            micStatus.innerText = "🎤 Écoute active (Verrouillée)";
+            process(); isListening = true;
+            micStatus.innerText = "🎤 Écoute";
         } catch (err) { micStatus.innerText = "⚠️ Erreur micro"; }
     }
 
@@ -306,21 +323,16 @@
         let maxNoise = 0, startTime = Date.now();
         const check = () => {
             analyser.getByteFrequencyData(dataArray);
-            // On calibre sur les fréquences de données (au-dessus de 1300Hz)
-            const startBin = Math.floor(1300 / (audioCtx.sampleRate / analyser.fftSize));
+            const startBin = Math.floor((1300 + FREQ_OFFSET) / (audioCtx.sampleRate / analyser.fftSize));
             for (let i = startBin; i < bufferLength; i++) {
                 if (dataArray[i] > maxNoise) maxNoise = dataArray[i];
             }
             if (Date.now() - startTime < 2000) requestAnimationFrame(check);
             else {
-                // Calcul du nouveau seuil
                 dynamicThreshold = Math.max(45, maxNoise + 15);
                 isCalibrating = false;
-                
-                // --- ICI : AFFICHAGE DU NOMBRE ---
-                micStatus.innerText = "✅ Calibré : " + Math.round(dynamicThreshold);
-                
-                setTimeout(() => micStatus.innerText = "🎤 Écoute active (Verrouillée)", 3000);
+                micStatus.innerText = "✅ Calibré";
+                setTimeout(() => micStatus.innerText = "🎤 Écoute", 2000);
             }
         };
         check();
