@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SonicChat Pro</title>
+    <title>SonicChat Pro - Settings & VU Meter</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -16,7 +16,6 @@
             height: 100vh; 
             overflow: hidden;
         }
-
         header { 
             background: #202c33; 
             padding: 15px; 
@@ -24,7 +23,25 @@
             font-weight: bold; 
             color: #00a884;
             border-bottom: 1px solid #3b4a54;
-            z-index: 10;
+        }
+
+        /* --- BARRE DE VOLUME (VU METER) --- */
+        #vu-container {
+            width: 100%;
+            height: 10px;
+            background: #182229;
+            border-bottom: 1px solid #3b4a54;
+            position: relative;
+            overflow: hidden;
+        }
+        #vu-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.05s ease-out, background 0.1s;
+            background: linear-gradient(to right, #ffbc00, #ff3b3b);
+        }
+        #vu-bar.unlocked {
+            background: linear-gradient(to right, #00a884, #ffbc00, #ff3b3b);
         }
 
         #chat-window { 
@@ -37,7 +54,6 @@
             background-image: radial-gradient(#202c33 1px, transparent 1px);
             background-size: 20px 20px;
         }
-
         .bubble { 
             max-width: 80%; 
             padding: 10px 15px; 
@@ -45,35 +61,13 @@
             font-size: 16px; 
             line-height: 1.4;
             word-wrap: break-word;
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.2s ease;
         }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .sent { align-self: flex-end; background: #005c4b; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: #202c33; border-bottom-left-radius: 2px; }
-
-        /* ZONE CANAL DÉPLACÉE ICI POUR ÉVITER LES COUPURES */
-        .channel-bar {
-            background: #182229;
-            padding: 5px 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            border-top: 1px solid #3b4a54;
-            font-size: 13px;
-        }
-        .channel-bar input {
-            background: #2a3942;
-            border: 1px solid #00a884;
-            color: white;
-            border-radius: 5px;
-            width: 60px;
-            text-align: center;
-            padding: 2px;
-            outline: none;
-        }
-
+        
+        /* Zone de saisie */
         .input-area { 
             background: #202c33; 
             padding: 12px 15px; 
@@ -81,7 +75,6 @@
             align-items: center; 
             gap: 10px;
         }
-
         input[type="text"] { 
             flex: 1; 
             background: #2a3942; 
@@ -92,62 +85,121 @@
             outline: none;
             font-size: 16px;
         }
-
-        button { 
+        .btn-round { 
             background: #00a884; border: none; width: 48px; height: 48px; border-radius: 50%; color: #0b141a; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
         }
+        #btnOpenSettings { background: #3b4a54; color: white; width: 40px; height: 40px; }
 
-        #btnCalibrate { background: #3b4a54; width: 40px; height: 40px; color: white; }
+        /* --- FENÊTRE MODALE --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.85);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #232d36;
+            padding: 25px;
+            border-radius: 15px;
+            width: 85%;
+            max-width: 350px;
+            text-align: center;
+            border: 1px solid #3b4a54;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal-content h2 { color: #00a884; margin-top: 0; font-size: 1.2rem; }
+        .setting-row { margin: 20px 0; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        .setting-row input {
+            background: #2a3942; border: 1px solid #00a884; color: white;
+            padding: 8px; border-radius: 5px; width: 100px; text-align: center; font-size: 16px; outline: none;
+        }
+        .btn-action {
+            background: #00a884; border: none; padding: 12px; border-radius: 8px;
+            color: #0b141a; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 10px;
+        }
+        .btn-secondary { background: #3b4a54; color: white; }
+        .close-modal { margin-top: 15px; color: #8696a0; cursor: pointer; font-size: 14px; text-decoration: underline; }
+
         .status-bar { font-size: 12px; background: #182229; padding: 6px; text-align: center; color: #8696a0; }
-        #visualizer { width: 100%; height: 2px; background: transparent; transition: background 0.1s; }
     </style>
 </head>
 <body>
 
-<header>SonicChat Pro</header>
-<div class="status-bar" id="micStatus">Touchez l'écran pour activer le micro</div>
-<div id="visualizer"></div>
+<header>HzChat</header>
+<div id="vu-container"><div id="vu-bar"></div></div>
+<div class="status-bar" id="micStatus">Cliquez pour activer</div>
 
 <div id="chat-window">
-    <div class="bubble received">Réglage du canal déplacé en bas pour éviter les coupures sur ton écran.</div>
-</div>
-
-<div class="channel-bar">
-    <label style="color: #8696a0;">Canal :</label>
-    <input type="number" id="freqOffsetInput" value="0" onchange="updateOffset()">
-    <span style="color: #00a884; font-weight: bold;">Hz</span>
+    <div class="bubble received">Bienvenue utilisez deux téléphone proche</div>
 </div>
 
 <div class="input-area">
-    <button id="btnCalibrate" onclick="calibrate()">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 9.5a2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 1 0-5m0-2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9m0-6a1 1 0 0 1 1 1v2.07a8.001 8.001 0 0 1 7.93 7.93H23a1 1 0 1 1 0 2h-2.07a8.001 8.001 0 0 1-7.93 7.93V23a1 1 0 1 1-2 0v-2.07a8.001 8.001 0 0 1-7.93-7.93H1a1 1 0 1 1 0-2h2.07a8.001 8.001 0 0 1 7.93-7.93V2a1 1 0 0 1 1-1z"/></svg>
+    <button id="btnOpenSettings" class="btn-round" onclick="toggleModal(true)">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm7-3.5c0-.4-.05-.8-.13-1.2l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65A.488.488 0 0 0 12.45 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64L5.13 10.8c-.08.4-.13.8-.13 1.2s.05.8.13 1.2l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.31.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.22.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65c.08-.4.13-.8.13-1.2z"/></svg>
     </button>
-    <input type="text" id="inputText" placeholder="Message" autocomplete="off">
-    <button onclick="sendSound()">
+    <input type="text" id="inputText" placeholder="Message ultra-rapide..." autocomplete="off">
+    <button class="btn-round" onclick="sendSound()">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-            <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path>
+            <path d="M1.101 21.757L23.8 12.028 1.101 2.3 l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"></path>
         </svg>
     </button>
+</div>
+
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <h2>Paramètres Audio</h2>
+        
+        <div class="setting-row">
+            <label style="color:#8696a0; font-size:14px;">Canal de transmission</label>
+            <div>
+                <input type="number" id="freqOffsetInput" value="0" onchange="updateOffset()">
+                <span style="color: #00a884; font-weight: bold; margin-left: 5px;">Hz</span>
+            </div>
+        </div>
+
+        <button class="btn-action" onclick="calibrate()">Calibration Auto</button>
+        <button class="btn-action btn-secondary" onclick="resetCalibration()">Réinitialiser</button>
+        
+        <div class="close-modal" onclick="toggleModal(false)">Fermer</div>
+    </div>
 </div>
 
 <script>
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let analyser, dataArray, bufferLength;
     let isListening = false, isSending = false, isCalibrating = false;
-    let dynamicThreshold = 50;
+    let dynamicThreshold = 40;
     
     let FREQ_OFFSET = 0;
-    const STEP_FREQ = 60; 
-    const CHAR_DURATION = 0.20; 
-    const GAP_DURATION = 0.25; 
+    const STEP_FREQ = 40; 
+    const CHAR_DURATION = 0.08; 
+    const RAMP_TIME = 0.005;
+
+    const FREQ_START_1 = 1500;
+    const FREQ_START_2 = 1700;
+    const FREQ_END = 1400;
 
     const chatWindow = document.getElementById('chat-window');
     const micStatus = document.getElementById('micStatus');
-    const visualizer = document.getElementById('visualizer');
+    const vuBar = document.getElementById('vu-bar');
+    const modal = document.getElementById('settingsModal');
+
+    function toggleModal(show) {
+        modal.style.display = show ? 'flex' : 'none';
+    }
 
     function updateOffset() {
         FREQ_OFFSET = parseInt(document.getElementById('freqOffsetInput').value) || 0;
-        micStatus.innerText = "Canal réglé sur +" + FREQ_OFFSET + " Hz";
+        micStatus.innerText = "Canal réglé : " + FREQ_OFFSET + " Hz";
+    }
+
+    function resetCalibration() {
+        dynamicThreshold = 40;
+        micStatus.innerText = "Calibration réinitialisée";
+        setTimeout(() => micStatus.innerText = "🎤 Écoute", 1000);
     }
 
     function playTone(freq, startTime, duration) {
@@ -156,7 +208,8 @@
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, startTime);
         gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.4, startTime + 0.05); 
+        gain.gain.linearRampToValueAtTime(0.4, startTime + RAMP_TIME);
+        gain.gain.setValueAtTime(0.4, startTime + duration - RAMP_TIME);
         gain.gain.linearRampToValueAtTime(0, startTime + duration);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -168,118 +221,116 @@
         const input = document.getElementById('inputText');
         const text = input.value.trim();
         if (!text || isSending) return;
-
         isSending = true; 
         addMessage(text, 'sent');
         input.value = '';
-        micStatus.innerText = "🔇 Envoi";
-
-        let time = audioCtx.currentTime + 0.1;
-        playTone(1500 + FREQ_OFFSET, time, CHAR_DURATION);
-        time += CHAR_DURATION + GAP_DURATION;
-
+        micStatus.innerText = "⚡ Transmission...";
+        let time = audioCtx.currentTime + 0.05;
+        playTone(FREQ_START_1 + FREQ_OFFSET, time, CHAR_DURATION);
+        time += CHAR_DURATION;
+        playTone(FREQ_START_2 + FREQ_OFFSET, time, CHAR_DURATION);
+        time += CHAR_DURATION;
         text.split('').forEach(char => {
-            const freq = (1800 + FREQ_OFFSET) + (char.charCodeAt(0) * STEP_FREQ);
+            const freq = (2000 + FREQ_OFFSET) + (char.charCodeAt(0) * STEP_FREQ);
             playTone(freq, time, CHAR_DURATION);
-            time += CHAR_DURATION + GAP_DURATION; 
+            time += CHAR_DURATION; 
         });
-
-        playTone(1400 + FREQ_OFFSET, time, CHAR_DURATION);
-
-        setTimeout(() => { 
-            isSending = false; 
-            micStatus.innerText = "🎤 Écoute active";
-        }, (time - audioCtx.currentTime) * 1000 + 1000);
+        playTone(FREQ_END + FREQ_OFFSET, time, CHAR_DURATION);
+        setTimeout(() => { isSending = false; micStatus.innerText = "🎤 Écoute"; }, (time - audioCtx.currentTime) * 1000 + 200);
     }
 
     async function startListening() {
         if(isListening) return;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } 
-            });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
             const source = audioCtx.createMediaStreamSource(stream);
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 8192; 
+            analyser.fftSize = 2048; 
             source.connect(analyser);
             bufferLength = analyser.frequencyBinCount;
             dataArray = new Uint8Array(bufferLength);
             
-            let currentWord = "", lastCharTime = 0, gateOpen = false;
+            let currentWord = "", lastCharTime = 0;
+            let step1_verified = false, gateOpen = false;
 
             function process() {
                 if (isSending || isCalibrating) { 
-                    visualizer.style.background = "transparent";
+                    vuBar.style.width = "0%";
                     requestAnimationFrame(process); return; 
                 }
 
                 analyser.getByteFrequencyData(dataArray);
+                
+                // VU Meter Logic
+                let sum = 0;
+                for(let i=0; i<bufferLength; i++) { sum += dataArray[i]; }
+                let volumePercent = Math.min(100, (sum / bufferLength) * 4);
+                vuBar.style.width = volumePercent + "%";
+                if(gateOpen) vuBar.classList.add('unlocked');
+                else vuBar.classList.remove('unlocked');
+
                 let highVal = 0, highIdx = -1;
-                const startBin = Math.floor((1300 + FREQ_OFFSET) / (audioCtx.sampleRate / analyser.fftSize));
-                for (let i = startBin; i < bufferLength; i++) {
+                const minBin = Math.floor((1300 + FREQ_OFFSET) / (audioCtx.sampleRate / analyser.fftSize));
+                
+                for (let i = minBin; i < bufferLength; i++) {
                     if (dataArray[i] > highVal && dataArray[i] > dynamicThreshold) {
                         highVal = dataArray[i]; highIdx = i;
                     }
                 }
 
-                visualizer.style.background = highVal > dynamicThreshold ? (gateOpen ? "#00a884" : "#ffbc00") : "transparent";
-
                 if (highIdx > -1) {
                     const freq = highIdx * (audioCtx.sampleRate / 2) / bufferLength;
                     const now = Date.now();
-
-                    if (gateOpen && (now - lastCharTime > 2000)) { 
-                        gateOpen = false; currentWord = ""; 
-                        micStatus.innerText = "🎤 Écoute";
-                    }
-
-                    if (!gateOpen && Math.abs(freq - (1500 + FREQ_OFFSET)) < 30) {
-                        if (now - lastCharTime > 1000) {
-                            gateOpen = true; lastCharTime = now;
-                            micStatus.innerText = "🔓 Synchro";
-                        }
+                    if (!step1_verified && !gateOpen && Math.abs(freq - (FREQ_START_1 + FREQ_OFFSET)) < 40) {
+                        step1_verified = true; lastCharTime = now; micStatus.innerText = "⏳ Verrou 1...";
                     } 
-                    else if (gateOpen && Math.abs(freq - (1400 + FREQ_OFFSET)) < 30) {
-                        if (now - lastCharTime > 400) {
-                            if (currentWord) addMessage(currentWord, 'received');
-                            currentWord = ""; gateOpen = false; lastCharTime = now;
-                            micStatus.innerText = "🎤 Écoute";
+                    else if (step1_verified && !gateOpen && Math.abs(freq - (FREQ_START_2 + FREQ_OFFSET)) < 40) {
+                        if (now - lastCharTime < (CHAR_DURATION * 1000 * 1.5)) {
+                            gateOpen = true; step1_verified = false; lastCharTime = now;
+                            currentWord = ""; micStatus.innerText = "🔓 Double Sync OK";
                         }
                     }
-                    else if (gateOpen && freq >= (1800 + FREQ_OFFSET - 20)) {
-                        const code = Math.round((freq - (1800 + FREQ_OFFSET)) / STEP_FREQ);
-                        if (code >= 32 && code <= 126) {
-                            if (now - lastCharTime > (CHAR_DURATION + GAP_DURATION) * 850) {
-                                currentWord += String.fromCharCode(code);
-                                lastCharTime = now;
+                    else if (gateOpen && Math.abs(freq - (FREQ_END + FREQ_OFFSET)) < 40) {
+                        if (now - lastCharTime > (CHAR_DURATION * 600)) {
+                            if (currentWord) addMessage(currentWord, 'received');
+                            gateOpen = false; currentWord = ""; micStatus.innerText = "🎤 Écoute";
+                        }
+                    }
+                    else if (gateOpen && freq >= (2000 + FREQ_OFFSET - 20)) {
+                        const code = Math.round((freq - (2000 + FREQ_OFFSET)) / STEP_FREQ);
+                        if (code >= 32 && code <= 255) {
+                            if (now - lastCharTime >= (CHAR_DURATION * 1000 * 0.92)) { 
+                                currentWord += String.fromCharCode(code); lastCharTime = now;
                             }
                         }
                     }
                 }
+                const maxWait = gateOpen ? 1500 : (CHAR_DURATION * 1000 * 2.5);
+                if ((step1_verified || gateOpen) && Date.now() - lastCharTime > maxWait) {
+                    step1_verified = false; gateOpen = false; micStatus.innerText = "🎤 Écoute";
+                }
                 requestAnimationFrame(process);
             }
-            process(); isListening = true;
-            micStatus.innerText = "🎤 Écoute active)";
+            process(); isListening = true; micStatus.innerText = "🎤 Écoute active";
         } catch (err) { micStatus.innerText = "⚠️ Erreur micro"; }
     }
 
     function calibrate() {
-        if (!isListening) { startListening(); return; }
+        if (!isListening) { startListening(); }
         isCalibrating = true;
-        micStatus.innerText = "⏳ Calibration...";
+        toggleModal(false); // Ferme pour montrer le status bar
+        micStatus.innerText = "⏳ Silence requis...";
         let maxNoise = 0, startTime = Date.now();
         const check = () => {
             analyser.getByteFrequencyData(dataArray);
             const startBin = Math.floor((1300 + FREQ_OFFSET) / (audioCtx.sampleRate / analyser.fftSize));
-            for (let i = startBin; i < bufferLength; i++) {
-                if (dataArray[i] > maxNoise) maxNoise = dataArray[i];
-            }
-            if (Date.now() - startTime < 2000) requestAnimationFrame(check);
+            for (let i = startBin; i < bufferLength; i++) { if (dataArray[i] > maxNoise) maxNoise = dataArray[i]; }
+            if (Date.now() - startTime < 1200) requestAnimationFrame(check);
             else {
-                dynamicThreshold = Math.max(45, maxNoise + 15);
+                dynamicThreshold = Math.max(30, maxNoise + 12);
                 isCalibrating = false;
-                micStatus.innerText = "✅ Seuil : " + Math.round(dynamicThreshold);
-                setTimeout(() => micStatus.innerText = "🎤 Écoute", 2000);
+                micStatus.innerText = "✅ Calibré (" + Math.round(dynamicThreshold) + ")";
+                setTimeout(() => micStatus.innerText = "🎤 Écoute", 1500);
             }
         };
         check();
